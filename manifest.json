@@ -1,0 +1,32 @@
+{
+    //required
+    "manifest_version": 2,
+    "name": "mail-dash",
+    "version": "1",
+    "minimum_chrome_version": "18",
+    
+    //recommended
+    "description": "This extension shows all mailboxes on one tab",
+    "icons": {
+        "19": "mail-icon.png"
+        },
+    "background_page": "index.html",
+    
+    // Pick one (or none)
+    "browser_action": {
+        "default_icon": "mail-icon.png",    //optional
+        "default_title": "mail-dash"       //optional; shown in tooltip
+    },
+    
+    // Optional
+    "author": "Mykayla Fernandes",
+    "background": {
+    // Recommended
+    "page": "index.html",
+    "persistent": false
+    },
+    "permissions": [
+    "tabs",
+    "https://ajax.googleapis.com/"
+    ]
+}

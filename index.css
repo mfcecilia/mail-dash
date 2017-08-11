@@ -1,0 +1,85 @@
+/*html styles*/
+html {
+    font-family: 'Ubuntu', sans-serif;
+}
+
+#title {
+    margin-left: 1em;
+}
+
+.navbar {
+    width: 100%;
+    position: fixed;
+    height: 5em;
+    background-color: white;
+    border-color: blanchedalmond;
+    border-width: thick;
+    margin-bottom: 5em;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.view-container {
+    margin-top: 7em;
+}
+
+/*mail div wrapper*/
+.mail-wrapper {
+    width: 100%;
+    justify-content: center;
+    align-content: center;
+    display: flex;
+    flex-direction: row;
+    text-align: center;
+    margin: 0 auto;
+    margin-bottom: 2em;
+    margin-top: 2em;
+}
+
+/*all mail divs*/
+.mail-wrapper div {
+    width: 33%;
+    height: 33%;
+    border-style: groove;
+    display: flex;
+    margin: 1em;
+    flex-flow: column;
+}
+
+/*wrapper to load inbox into*/
+.mail-wrapper div div {
+    border-style: none;
+    background-color: white;
+    align-self: center;
+}
+
+/*mail-0 div styles*/
+#mail-0 {
+    border-color: azure;
+}
+
+/*mail-1 div styles*/
+#mail-1 {
+    background-color: bisque;
+}
+
+/*mail-2 div styles*/
+#mail-2 {
+    background-color: aliceblue;
+}
+
+/*mail-3 div styles*/
+#mail-3 {
+    background-color: antiquewhite;
+}
+
+/*mail-4 div styles*/
+#mail-4 {
+    background-color: beige;
+}
+
+/*mail-5 div styles*/
+#mail-5 {
+    background-color: blanchedalmond;
+}
