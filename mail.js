@@ -1,380 +1,113 @@
-/*mail.js*/
-
-var animationFrames = 36;
-var animationSpeed = 10; // ms
-var canvas = document.getElementById('canvas');
-var loggedInImage = document.getElementById('logged_in');
-var canvasContext = canvas.getContext('2d');
-var pollIntervalMin = 1;  // 1 minute
-var pollIntervalMax = 60;  // 1 hour
-var requestTimeout = 1000 * 2;  // 2 seconds
-var rotation = 0;
-var loadingAnimation = new LoadingAnimation();
-// Legacy support for pre-event-pages.
-var oldChromeVersion = !chrome.runtime;
-var requestTimerId;
 
 
-/*get gmail url*/
-function getGmailUrl() {
-    'use strict';
-    return "https://mail.google.com/mail/";
-}
+// Client ID and API key from the Developer Console
+var CLIENT_ID = '457175224664-r0vve29313u2h52pba2iaf5pije643kq.apps.googleusercontent.com';
 
-/* 
-Identifier used to debug the possibility of multiple instances of the
-extension making requests on behalf of a single user
+// Array of API discovery doc URLs for APIs used by the quickstart
+var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"];
+
+// Authorization scopes required by the API; multiple scopes can be
+// included, separated by spaces.
+var SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+
+var authorizeButton = document.getElementById('authorize-button');
+var signoutButton = document.getElementById('signout-button');
+
+/**
+*  On load, called to load the auth2 library and API client library.
 */
-function getInstanceId() {
+function handleClientLoad() {
     'use strict';
-    if (!localStorage.hasOwnProperty("instanceId")) {
-        localStorage.instanceId = 'gmc' + parseInt(Date.now() * Math.random(), 10);
-        return localStorage.instanceId;
-    }
+    gapi.load('client:auth2', initClient);
 }
 
-/*
-"zx" is a Gmail query parameter that is expected to contain a random
-string and may be ignored/stripped.
+/**
+*  Initializes the API client library and sets up sign-in state
+*  listeners.
 */
-function getFeedUrl() {
+function initClient() {
     'use strict';
-    return getGmailUrl() + "feed/atom?zx=" + encodeURIComponent(getInstanceId());
+    gapi.client.init({
+        discoveryDocs: DISCOVERY_DOCS,
+        clientId: CLIENT_ID,
+        scope: SCOPES
+    }).then(function () {
+        // Listen for sign-in state changes.
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+        // Handle the initial sign-in state.
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        authorizeButton.onclick = handleAuthClick;
+        signoutButton.onclick = handleSignoutClick;
+    });
 }
 
-
-/*
-Return whether the URL starts with the Gmail prefix.
+/**
+*  Called when the signed in status changes, to update the UI
+*  appropriately. After a sign-in, the API is called.
 */
-function isGmailUrl(url) {
+function updateSigninStatus(isSignedIn) {
     'use strict';
-    return url.startsWith(getGmailUrl());
-}
-
-
-/*
-A "loading" animation displayed while we wait for the first response from
-Gmail. This animates the badge text with a dot that cycles from left to
-right.
-*/
-function LoadingAnimation() {
-    'use strict';
-    this.timerId_ = 0;
-    this.maxCount_ = 8;  // Total number of states in animation
-    this.current_ = 0;  // Current state
-    this.maxDot_ = 4;  // Max number of dots in animation
-}
-
-
-LoadingAnimation.prototype.paintFrame = function () {
-    'use strict';
-    var text, i;
-    text = "";
-    for (i = 0; i < this.maxDot_; i++) {
-        text += (i === this.current_) ? "." : " ";
-    }
-    if (this.current_ >= this.maxDot_) {text += "";
-        chrome.browserAction.setBadgeText({text: text});
-        this.current_++;
-        if (this.current_ === this.maxCount_) {
-            this.current_ = 0;
-        }
-
-
-                                        LoadingAnimation.prototype.start = function () {
-            if (this.timerId_) {
-                return;
-            }
-            var self = this;
-            this.timerId_ = window.setInterval(function () {
-                self.paintFrame();
-            }, 100);
-        }
-
-
-                                        LoadingAnimation.prototype.stop = function () {
-            'use strict';
-            if (!this.timerId_)
-    return;
-            window.clearInterval(this.timerId_);
-            this.timerId_ = 0;
-        };
-
-
-        function updateIcon() {
-            if (!localStorage.hasOwnProperty('unreadCount')) {
-                chrome.browserAction.setIcon({path: "gmail_not_logged_in.png"});
-                chrome.browserAction.setBadgeBackgroundColor({color: [190, 190, 190, 230]});
-                chrome.browserAction.setBadgeText({text: "?"});
-            } else {
-                chrome.browserAction.setIcon({path: "gmail_logged_in.png"});
-                chrome.browserAction.setBadgeBackgroundColor({color: [208, 0, 24, 255]});
-                chrome.browserAction.setBadgeText({
-                    text: localStorage.unreadCount !== "0" ? localStorage.unreadCount : ""
-                    });
-            }
-        }
-                                        function scheduleRequest() {
-            console.log('scheduleRequest');
-  var randomness = Math.random() * 2;
-  var exponent = Math.pow(2, localStorage.requestFailureCount || 0);
-            var multiplier = Math.max(randomness * exponent, 1);
-  var delay = Math.min(multiplier * pollIntervalMin, pollIntervalMax);
-  delay = Math.round(delay);
-                console.log('Scheduling for: ' + delay);
-            if (oldChromeVersion) {
-                if (requestTimerId) {
-                    window.clearTimeout(requestTimerId);
-                }
-                requestTimerId = window.setTimeout(onAlarm, delay * 60 * 1000);
-            } else {
-                console.log('Creating alarm');
-    // Use a repeating alarm so that it fires again if there was a problem
-    // setting the next alarm.
-                chrome.alarms.create('refresh', {periodInMinutes: delay});
-            }
-        }
-
-
-// ajax stuff
-                                        function startRequest(params) {
-  // Schedule request immediately. We want to be sure to reschedule, even in the
-  // case where the extension process shuts down while this request is
-  // outstanding.
-            if (params && params.scheduleRequest) {
-                scheduleRequest();
-            }
-            function stopLoadingAnimation() {
-                if (params && params.showLoadingAnimation) {
-                    loadingAnimation.stop();
-                }
-            }
-            if (params && params.showLoadingAnimation) {
-                loadingAnimation.start();
-            }
-            getInboxCount(
-                function (count) {
-                    stopLoadingAnimation();
-                    updateUnreadCount(count);
-                },
-    function() {
-                stopLoadingAnimation();
-                    delete localStorage.unreadCount;
-                    updateIcon();
-                }
-            );
-        }
-
-
-                                        function getInboxCount(onSuccess, onError) {
-            var xhr, abortTimerId;
-            xhr = new XMLHttpRequest();
-            abortTimerId = window.setTimeout(function () {
-                xhr.abort();  // synchronously calls onreadystatechange
-            }, requestTimeout);
-            function handleSuccess(count) {
-                localStorage.requestFailureCount = 0;
-                window.clearTimeout(abortTimerId);
-                if (onSuccess) {
-                    onSuccess(count);
-                }
-                var invokedErrorCallback = false;
-                function handleError() {
-                    ++localStorage.requestFailureCount;
-                    window.clearTimeout(abortTimerId);
-                    if (onError && !invokedErrorCallback) {
-                        onError();
-                        invokedErrorCallback = true;
-                    }
-                    try {
-                        xhr.onreadystatechange = function () {
-                            if (xhr.readyState !== 4) {
-                                return;
-                            }
-                            if (xhr.responseXML) {
-                                var xmlDoc, fullCountSet, fullCountNode;
-                                xmlDoc = xhr.responseXML;
-                                fullCountSet = xmlDoc.evaluate("/gmail:feed/gmail:fullcount",
-                                    xmlDoc, gmailNSResolver, XPathResult.ANY_TYPE, null);
-                                fullCountNode = fullCountSet.iterateNext();
-                                if (fullCountNode) {
-                                    handleSuccess(fullCountNode.textContent);
-                                    return;
-        } else {
-          console.error(chrome.i18n.getMessage("gmailcheck_node_error"));
-        }
-      }
-      handleError();
-    };
-    xhr.onerror = function(error) {
-      handleError();
-    };
-    xhr.open("GET", getFeedUrl(), true);
-    xhr.send(null);
-  } catch(e) {
-    console.error(chrome.i18n.getMessage("gmailcheck_exception", e));
-    handleError();
-  }
-}
-
-
-function gmailNSResolver(prefix) {
-  if(prefix == 'gmail') {
-    return 'http://purl.org/atom/ns#';
-  }
-}
-
-
-function updateUnreadCount(count) {
-  var changed = localStorage.unreadCount != count;
-  localStorage.unreadCount = count;
-  updateIcon();
-  if (changed)
-    animateFlip();
-}
-
-
-function ease(x) {
-  return (1-Math.sin(Math.PI/2+x*Math.PI))/2;
-}
-
-
-function animateFlip() {
-  rotation += 1/animationFrames;
-  drawIconAtRotation();
-  if (rotation <= 1) {
-    setTimeout(animateFlip, animationSpeed);
-  } else {
-    rotation = 0;
-    updateIcon();
-  }
-}
-
-
-function drawIconAtRotation() {
-  canvasContext.save();
-  canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-  canvasContext.translate(
-      Math.ceil(canvas.width/2),
-      Math.ceil(canvas.height/2));
-  canvasContext.rotate(2*Math.PI*ease(rotation));
-  canvasContext.drawImage(loggedInImage,
-      -Math.ceil(canvas.width/2),
-      -Math.ceil(canvas.height/2));
-  canvasContext.restore();
-  chrome.browserAction.setIcon({imageData:canvasContext.getImageData(0, 0,
-      canvas.width,canvas.height)});
-}
-
-
-function goToInbox() {
-  console.log('Going to inbox...');
-  chrome.tabs.getAllInWindow(undefined, function(tabs) {
-    for (var i = 0, tab; tab = tabs[i]; i++) {
-      if (tab.url && isGmailUrl(tab.url)) {
-        console.log('Found Gmail tab: ' + tab.url + '. ' +
-                    'Focusing and refreshing count...');
-        chrome.tabs.update(tab.id, {selected: true});
-        startRequest({scheduleRequest:false, showLoadingAnimation:false});
-        return;
-      }
-    }
-    console.log('Could not find Gmail tab. Creating one...');
-    chrome.tabs.create({url: getGmailUrl()});
-  });
-}
-
-
-function onInit() {
-  console.log('onInit');
-  localStorage.requestFailureCount = 0;  // used for exponential backoff
-  startRequest({scheduleRequest:true, showLoadingAnimation:true});
-  if (!oldChromeVersion) {
-    // TODO(mpcomplete): We should be able to remove this now, but leaving it
-    // for a little while just to be sure the refresh alarm is working nicely.
-    chrome.alarms.create('watchdog', {periodInMinutes:5});
-  }
-}
-
-
-function onAlarm(alarm) {
-  console.log('Got alarm', alarm);
-  // |alarm| can be undefined because onAlarm also gets called from
-  // window.setTimeout on old chrome versions.
-  if (alarm && alarm.name == 'watchdog') {
-    onWatchdog();
-  } else {
-    startRequest({scheduleRequest:true, showLoadingAnimation:false});
-  }
-}
-
-
-function onWatchdog() {
-  chrome.alarms.get('refresh', function(alarm) {
-    if (alarm) {
-      console.log('Refresh alarm exists. Yay.');
+    if (isSignedIn) {
+        authorizeButton.style.display = 'none';
+        signoutButton.style.display = 'block';
+        listLabels();
     } else {
-      console.log('Refresh alarm doesn\'t exist!? ' +
-                  'Refreshing now and rescheduling.');
-      startRequest({scheduleRequest:true, showLoadingAnimation:false});
+        authorizeButton.style.display = 'block';
+        signoutButton.style.display = 'none';
     }
-  });
-}
-if (oldChromeVersion) {
-  updateIcon();
-  onInit();
-} else {
-  chrome.runtime.onInstalled.addListener(onInit);
-  chrome.alarms.onAlarm.addListener(onAlarm);
-}
-var filters = {
-  // TODO(aa): Cannot use urlPrefix because all the url fields lack the protocol
-  // part. See crbug.com/140238.
-  url: [{urlContains: getGmailUrl().replace(/^https?\:\/\//, '')}]
-};
-
-
-function onNavigate(details) {
-  if (details.url && isGmailUrl(details.url)) {
-    console.log('Recognized Gmail navigation to: ' + details.url + '.' +
-                'Refreshing count...');
-    startRequest({scheduleRequest:false, showLoadingAnimation:false});
-  }
-}
-if (chrome.webNavigation && chrome.webNavigation.onDOMContentLoaded &&
-    chrome.webNavigation.onReferenceFragmentUpdated) {
-  chrome.webNavigation.onDOMContentLoaded.addListener(onNavigate, filters);
-  chrome.webNavigation.onReferenceFragmentUpdated.addListener(
-      onNavigate, filters);
-} else {
-  chrome.tabs.onUpdated.addListener(function(_, details) {
-    onNavigate(details);
-  });
-}
-chrome.browserAction.onClicked.addListener(goToInbox);
-if (chrome.runtime && chrome.runtime.onStartup) {
-  chrome.runtime.onStartup.addListener(function() {
-    console.log('Starting browser... updating icon.');
-    startRequest({scheduleRequest:false, showLoadingAnimation:false});
-    updateIcon();
-  });
-} else {
-  // This hack is needed because Chrome 22 does not persist browserAction icon
-  // state, and also doesn't expose onStartup. So the icon always starts out in
-  // wrong state. We don't actually use onStartup except as a clue that we're
-  // in a version of Chrome that has this problem.
-  chrome.windows.onCreated.addListener(function() {
-    console.log('Window created... updating icon.');
-    startRequest({scheduleRequest:false, showLoadingAnimation:false});
-    updateIcon();
-  });
 }
 
+/**
+*  Sign in the user upon button click.
+*/
+function handleAuthClick(event) {
+    'use strict';
+    gapi.auth2.getAuthInstance().signIn();
+}
 
-/*show and hide mail*/
+/**
+*  Sign out the user upon button click.
+*/
+function handleSignoutClick(event) {
+    'use strict';
+    gapi.auth2.getAuthInstance().signOut();
+}
 
+/**
+* Append a pre element to the body containing the given message
+* as its text node. Used to display the results of the API call.
+*
+* @param {string} message Text to be placed in pre element.
+*/
+function appendPre(message) {
+    'use strict';
+    var pre, textContent;
+    pre = document.getElementById('content');
+    textContent = document.createTextNode(message + '\n');
+    pre.appendChild(textContent);
+}
 
-/*resize windows*/
+/**
+* Print all Labels in the authorized user's inbox. If no labels
+* are found an appropriate message is printed.
+*/
+function listLabels() {
+    'use strict';
+    var labels, label;
+    gapi.client.gmail.users.labels.list({
+        'userId': 'me'
+    }).then(function (response) {
+        labels = response.result.labels;
+        appendPre('Labels:');
 
-
-/*todo list*/
+        if (labels && labels.length > 0) {
+            for (i = 0; i < labels.length; i++) {
+                label = labels[i];
+                appendPre(label.name);
+            }
+        } else {
+            appendPre('No Labels found.');
+        }
+    });
+}
