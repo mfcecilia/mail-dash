@@ -1,7 +1,5 @@
-
-
 // Client ID and API key from the Developer Console
-var CLIENT_ID = '457175224664-r0vve29313u2h52pba2iaf5pije643kq.apps.googleusercontent.com';
+var CLIENT_ID = '954908633240-3tli9i57jit9cjgprtgbrfeev274ebdu.apps.googleusercontent.com';
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"];
@@ -13,6 +11,9 @@ var SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
 var authorizeButton = document.getElementById('authorize-button');
 var signoutButton = document.getElementById('signout-button');
 
+
+
+
 /**
 *  On load, called to load the auth2 library and API client library.
 */
@@ -20,6 +21,14 @@ function handleClientLoad() {
     'use strict';
     gapi.load('client:auth2', initClient);
 }
+
+document.onload = function () {
+    'use strict';
+    handleClientLoad();
+    if (this.readyState === 'complete') {
+        this.onload();
+    }
+};
 
 /**
 *  Initializes the API client library and sets up sign-in state

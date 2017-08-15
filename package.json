@@ -1,0 +1,28 @@
+{
+  "name": "mail-dash",
+  "version": "0.1.0",
+  "description": "Displays all inboxes",
+  "main": "index.html",
+  "scripts": {
+    "build": "node index.html"
+  },
+  "dependencies": {
+    "express": "^4.13.3",
+    "google-auth-library": "^0.10.0",
+    "googleapis": "^20.1.0"
+  },
+  "engines": {
+    "node": "4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mfcecilia/mail-dash.git"
+  },
+  "keywords": [
+    "node",
+    "mail",
+    "express"
+  ],
+  "author": "mfcecilia",
+  "license": "MIT"
+}
